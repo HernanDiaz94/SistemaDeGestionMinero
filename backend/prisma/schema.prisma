@@ -1,0 +1,945 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum GlobalRole {
+  SUPERADMIN
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum ModuleKey {
+  DASHBOARD
+  PROJECTS
+  MINES
+  OPERATIONS
+  PRODUCTION
+  EQUIPMENT
+  PERSONNEL
+  REPORTS
+  SETTINGS
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  SUSPENDED
+  COMPLETED
+}
+
+enum MineMode {
+  OPEN_PIT
+  UNDERGROUND
+}
+
+enum MineStatus {
+  PLANNED
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AreaType {
+  BENCH
+  PHASE
+  EXTRACTION_FRONT
+  HAUL_ROAD
+  LEVEL
+  DRIFT
+  RAMP
+  ADVANCE_FRONT
+  OTHER
+}
+
+enum ShiftType {
+  DAY
+  NIGHT
+  ROTATING
+}
+
+enum EmploymentType {
+  EMPLOYEE
+  CONTRACTOR
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum EquipmentStatus {
+  OPERATIONAL
+  MAINTENANCE
+  OUT_OF_SERVICE
+  INACTIVE
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  ENDED
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum AttachmentKind {
+  PHOTO
+  DOCUMENT
+}
+
+enum ProductionCategory {
+  MASS
+  VOLUME
+  LENGTH
+  TIME
+  COUNT
+}
+
+enum TargetPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SUBMIT
+  APPROVE
+  REJECT
+  LOGIN
+  LOGOUT
+  SWITCH_TENANT
+}
+
+// ============================================================================
+// GLOBAL / PLATFORM MODELS
+// ============================================================================
+
+model Tenant {
+  id         String       @id @default(uuid())
+  name       String
+  slug       String       @unique
+  legalName  String?
+  taxId      String?
+  timezone   String       @default("UTC")
+  status     TenantStatus @default(TRIAL)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  tenantUsers       TenantUser[]
+  roles             Role[]
+  modules           TenantModule[]
+  subscriptions     Subscription[]
+  auditLogs         AuditLog[]
+  projects          Project[]
+  mines             Mine[]
+  mineAreas         MineArea[]
+  shifts            Shift[]
+  crews             Crew[]
+  employees         Employee[]
+  equipmentCategories EquipmentCategory[]
+  equipment         Equipment[]
+  equipmentAssignments EquipmentAssignment[]
+  equipmentReadings EquipmentReading[]
+  fuelRecords       FuelRecord[]
+  productionUnits   ProductionUnit[]
+  productionIndicators ProductionIndicator[]
+  productionTargets ProductionTarget[]
+  operationReports  OperationReport[]
+  operationActivities OperationActivity[]
+  productionRecords ProductionRecord[]
+  reportEmployees   ReportEmployee[]
+  reportEquipment   ReportEquipment[]
+  reportAttachments ReportAttachment[]
+  reportApprovals   ReportApproval[]
+  reportRevisions   ReportRevision[]
+  notifications     Notification[]
+
+  @@index([status])
+
+  @@map("tenant")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  globalRole   GlobalRole @default(USER)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tenantUsers       TenantUser[]
+  createdReports    OperationReport[] @relation("ReportCreatedBy")
+  updatedReports    OperationReport[] @relation("ReportUpdatedBy")
+  supervisedReports OperationReport[] @relation("ReportSupervisor")
+  approvals         ReportApproval[]
+  revisions         ReportRevision[]
+  attachments       ReportAttachment[]
+  readings          EquipmentReading[]
+  fuelRecords       FuelRecord[]
+  targetsCreated    ProductionTarget[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+
+  @@map("user")
+}
+
+model TenantUser {
+  id        String     @id @default(uuid())
+  tenantId  String
+  userId    String
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles    TenantUserRole[]
+  reports  OperationReport[] @relation("ReportResponsibleUser")
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+
+  @@map("tenant_user")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  key         String
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  users       TenantUserRole[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+
+  @@map("role")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  module      String
+  action      String
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permission")
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+
+  @@map("role_permission")
+}
+
+model TenantUserRole {
+  id          String @id @default(uuid())
+  tenantUserId String
+  roleId      String
+
+  tenantUser TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantUserId, roleId])
+
+  @@map("tenant_user_role")
+}
+
+model TenantModule {
+  id        String    @id @default(uuid())
+  tenantId  String
+  key       ModuleKey
+  enabled   Boolean   @default(true)
+  config    Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+
+  @@map("tenant_module")
+}
+
+model Subscription {
+  id          String             @id @default(uuid())
+  tenantId    String
+  plan        String
+  status      SubscriptionStatus @default(TRIAL)
+  maxUsers    Int                @default(10)
+  startDate   DateTime           @default(now())
+  endDate     DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+
+  @@map("subscription")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  tenantId   String?
+  actorId    String?
+  action     AuditAction
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actor  User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+
+  @@map("audit_log")
+}
+
+// ============================================================================
+// PROJECTS / MINE STRUCTURE
+// ============================================================================
+
+model Project {
+  id          String        @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNED)
+  startDate   DateTime?     @db.Date
+  endDate     DateTime?     @db.Date
+  managerId   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  manager   Employee?  @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
+  mines     Mine[]
+  shifts    Shift[]
+  crews     Crew[]
+  employees Employee[]
+  equipment Equipment[]
+  assignments EquipmentAssignment[]
+  targets   ProductionTarget[]
+  reports   OperationReport[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+
+  @@map("project")
+}
+
+model Mine {
+  id          String     @id @default(uuid())
+  tenantId    String
+  projectId   String
+  code        String
+  name        String
+  mode        MineMode
+  status      MineStatus @default(PLANNED)
+  description String?
+  latitude    Decimal?   @db.Decimal(10, 7)
+  longitude   Decimal?   @db.Decimal(10, 7)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  areas    MineArea[]
+  targets  ProductionTarget[]
+  reports  OperationReport[]
+
+  @@unique([tenantId, projectId, code])
+  @@index([tenantId, projectId])
+
+  @@map("mine")
+}
+
+model MineArea {
+  id          String    @id @default(uuid())
+  tenantId    String
+  mineId      String
+  parentId    String?
+  code        String
+  name        String
+  type        AreaType
+  description String?
+  status      EmployeeStatus @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mine      Mine            @relation(fields: [mineId], references: [id], onDelete: Cascade)
+  parent    MineArea?       @relation("AreaHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  MineArea[]      @relation("AreaHierarchy")
+  activities OperationActivity[]
+  targets   ProductionTarget[]
+  reports   OperationReport[]
+
+  @@unique([tenantId, mineId, code])
+  @@index([tenantId, mineId, type])
+
+  @@map("mine_area")
+}
+
+model Shift {
+  id        String    @id @default(uuid())
+  tenantId  String
+  projectId String?
+  code      String
+  name      String
+  type      ShiftType @default(DAY)
+  startTime String
+  endTime   String
+  status    EmployeeStatus @default(ACTIVE)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  crews     Crew[]
+  employees Employee[]
+  reports   OperationReport[]
+
+  @@unique([tenantId, code])
+
+  @@map("shift")
+}
+
+model Crew {
+  id          String    @id @default(uuid())
+  tenantId    String
+  projectId   String
+  shiftId     String?
+  code        String
+  name        String
+  supervisorId String?
+  status      EmployeeStatus @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shift     Shift?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  supervisor Employee? @relation("CrewSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  employees Employee[]
+
+  @@unique([tenantId, projectId, code])
+
+  @@map("crew")
+}
+
+// ============================================================================
+// PERSONNEL
+// ============================================================================
+
+model Employee {
+  id             String         @id @default(uuid())
+  tenantId       String
+  projectId      String?
+  crewId         String?
+  shiftId        String?
+  code           String
+  firstName      String
+  lastName       String
+  documentType   String         @default("DNI")
+  documentNumber String
+  email          String?
+  phone          String?
+  position       String
+  company        String?
+  type           EmploymentType @default(EMPLOYEE)
+  status         EmployeeStatus @default(ACTIVE)
+  hiredAt        DateTime?      @db.Date
+  documents      Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project         Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  crew            Crew?              @relation(fields: [crewId], references: [id], onDelete: SetNull)
+  shift           Shift?             @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  supervisedProjects Project[]       @relation("ProjectManager")
+  supervisedCrews Crew[]             @relation("CrewSupervisor")
+  reportEntries   ReportEmployee[]
+  assignments     EquipmentAssignment[]
+  responsibleEquipment Equipment[]
+  reportsSupervised OperationReport[] @relation("ReportSupervisorEmployee")
+
+  @@unique([tenantId, code])
+  @@index([tenantId, projectId, status])
+  @@index([tenantId, documentNumber])
+
+  @@map("employee")
+}
+
+// ============================================================================
+// EQUIPMENT
+// ============================================================================
+
+model EquipmentCategory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  equipment Equipment[]
+
+  @@unique([tenantId, code])
+
+  @@map("equipment_category")
+}
+
+model Equipment {
+  id              String          @id @default(uuid())
+  tenantId        String
+  categoryId      String?
+  projectId       String?
+  responsibleId   String?
+  code            String
+  name            String
+  brand           String?
+  model           String?
+  serialNumber    String?
+  status          EquipmentStatus @default(OPERATIONAL)
+  operatingHours  Decimal         @default(0) @db.Decimal(12, 2)
+  purchaseDate    DateTime?       @db.Date
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category    EquipmentCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  project     Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  responsible Employee?            @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
+  assignments EquipmentAssignment[]
+  readings    EquipmentReading[]
+  fuelRecords FuelRecord[]
+  reportEntries ReportEquipment[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+
+  @@map("equipment")
+}
+
+model EquipmentAssignment {
+  id           String           @id @default(uuid())
+  tenantId     String
+  equipmentId  String
+  projectId    String?
+  employeeId   String?
+  startDate    DateTime         @db.Date
+  endDate      DateTime?        @db.Date
+  status       AssignmentStatus @default(ACTIVE)
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  employee  Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, equipmentId, status])
+
+  @@map("equipment_assignment")
+}
+
+model EquipmentReading {
+  id             String   @id @default(uuid())
+  tenantId       String
+  equipmentId    String
+  readAt         DateTime
+  hours          Decimal  @db.Decimal(12, 2)
+  recordedByUserId String
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  recordedBy User     @relation(fields: [recordedByUserId], references: [id])
+
+  @@index([tenantId, equipmentId, readAt])
+
+  @@map("equipment_reading")
+}
+
+model FuelRecord {
+  id             String   @id @default(uuid())
+  tenantId       String
+  equipmentId    String
+  date           DateTime @db.Date
+  liters         Decimal  @db.Decimal(12, 3)
+  cost           Decimal? @db.Decimal(14, 2)
+  station        String?
+  recordedByUserId String
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  recordedBy User     @relation(fields: [recordedByUserId], references: [id])
+
+  @@index([tenantId, equipmentId, date])
+
+  @@map("fuel_record")
+}
+
+// ============================================================================
+// PRODUCTION CONFIGURATION
+// ============================================================================
+
+model ProductionUnit {
+  id               String             @id @default(uuid())
+  tenantId         String
+  code             String
+  name             String
+  symbol           String
+  category         ProductionCategory
+  factorToBaseUnit Decimal            @default(1) @db.Decimal(20, 6)
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  indicators ProductionIndicator[]
+  records    ProductionRecord[]
+
+  @@unique([tenantId, code])
+
+  @@map("production_unit")
+}
+
+model ProductionIndicator {
+  id          String    @id @default(uuid())
+  tenantId    String
+  unitId      String
+  code        String
+  name        String
+  category    ProductionCategory
+  description String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unit    ProductionUnit    @relation(fields: [unitId], references: [id])
+  records ProductionRecord[]
+  targets ProductionTarget[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active])
+
+  @@map("production_indicator")
+}
+
+model ProductionTarget {
+  id           String       @id @default(uuid())
+  tenantId     String
+  projectId    String
+  mineId       String?
+  areaId       String?
+  indicatorId  String
+  period       TargetPeriod @default(MONTHLY)
+  year         Int
+  month        Int?
+  day          Int?
+  targetValue  Decimal      @db.Decimal(18, 3)
+  createdByUserId String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project   Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mine      Mine?               @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  area      MineArea?           @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  indicator ProductionIndicator @relation(fields: [indicatorId], references: [id])
+  createdBy User               @relation(fields: [createdByUserId], references: [id])
+
+  @@index([tenantId, projectId, period, year])
+
+  @@map("production_target")
+}
+
+// ============================================================================
+// OPERATION REPORTS (PARTES DIARIOS)
+// ============================================================================
+
+model OperationReport {
+  id                  String       @id @default(uuid())
+  tenantId            String
+  projectId           String
+  mineId              String
+  areaId              String?
+  shiftId             String
+  code                String
+  date                DateTime     @db.Date
+  status              ReportStatus @default(DRAFT)
+  supervisorUserId    String
+  supervisorEmployeeId String?
+  responsibleTenantUserId String?
+  observations        String?
+  submittedAt         DateTime?
+  approvedAt          DateTime?
+  rejectedAt          DateTime?
+  createdByUserId     String
+  updatedByUserId     String?
+  version             Int          @default(1)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project            Project             @relation(fields: [projectId], references: [id])
+  mine               Mine                @relation(fields: [mineId], references: [id])
+  area               MineArea?           @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  shift              Shift               @relation(fields: [shiftId], references: [id])
+  supervisor         User                @relation("ReportSupervisor", fields: [supervisorUserId], references: [id])
+  supervisorEmployee Employee?           @relation("ReportSupervisorEmployee", fields: [supervisorEmployeeId], references: [id], onDelete: SetNull)
+  responsibleUser    TenantUser?         @relation("ReportResponsibleUser", fields: [responsibleTenantUserId], references: [id], onDelete: SetNull)
+  createdBy          User                @relation("ReportCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy          User?               @relation("ReportUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  activities         OperationActivity[]
+  production         ProductionRecord[]
+  employees          ReportEmployee[]
+  equipment          ReportEquipment[]
+  attachments        ReportAttachment[]
+  approvals          ReportApproval[]
+  revisions          ReportRevision[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, projectId, date])
+  @@index([tenantId, status, date])
+
+  @@map("operation_report")
+}
+
+model OperationActivity {
+  id          String   @id @default(uuid())
+  tenantId    String
+  reportId    String
+  areaId      String?
+  description String
+  startAt     DateTime?
+  endAt       DateTime?
+  hours       Decimal? @db.Decimal(8, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report   OperationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  area     MineArea?  @relation(fields: [areaId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, reportId])
+
+  @@map("operation_activity")
+}
+
+model ProductionRecord {
+  id           String   @id @default(uuid())
+  tenantId     String
+  reportId     String
+  indicatorId  String
+  unitId       String
+  value        Decimal  @db.Decimal(18, 3)
+  notes        String?
+  recordedAt   DateTime @default(now())
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report    OperationReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  indicator ProductionIndicator @relation(fields: [indicatorId], references: [id])
+  unit      ProductionUnit      @relation(fields: [unitId], references: [id])
+
+  @@index([tenantId, indicatorId])
+  @@index([tenantId, reportId])
+
+  @@map("production_record")
+}
+
+model ReportEmployee {
+  id         String   @id @default(uuid())
+  tenantId   String
+  reportId   String
+  employeeId String
+  hours      Decimal? @db.Decimal(8, 2)
+  role       String?
+  notes      String?
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report   OperationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  employee Employee        @relation(fields: [employeeId], references: [id])
+
+  @@unique([reportId, employeeId])
+  @@index([tenantId, employeeId])
+
+  @@map("report_employee")
+}
+
+model ReportEquipment {
+  id          String   @id @default(uuid())
+  tenantId    String
+  reportId    String
+  equipmentId String
+  hours       Decimal? @db.Decimal(8, 2)
+  fuelLiters  Decimal? @db.Decimal(10, 3)
+  notes       String?
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report    OperationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  equipment Equipment       @relation(fields: [equipmentId], references: [id])
+
+  @@unique([reportId, equipmentId])
+  @@index([tenantId, equipmentId])
+
+  @@map("report_equipment")
+}
+
+model ReportAttachment {
+  id             String         @id @default(uuid())
+  tenantId       String
+  reportId       String
+  kind           AttachmentKind @default(DOCUMENT)
+  fileName       String
+  storageKey     String
+  url            String?
+  mimeType       String
+  sizeBytes      Int
+  uploadedByUserId String
+  createdAt      DateTime       @default(now())
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report    OperationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  uploadedBy User           @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([tenantId, reportId])
+
+  @@map("report_attachment")
+}
+
+model ReportApproval {
+  id          String           @id @default(uuid())
+  tenantId    String
+  reportId    String
+  reviewerId  String
+  decision    ApprovalDecision
+  comments    String?
+  decidedAt   DateTime         @default(now())
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report   OperationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reviewer User            @relation(fields: [reviewerId], references: [id])
+
+  @@index([tenantId, reportId, decidedAt])
+
+  @@map("report_approval")
+}
+
+model ReportRevision {
+  id          String   @id @default(uuid())
+  tenantId    String
+  reportId    String
+  version     Int
+  snapshot    Json
+  reason      String?
+  changedByUserId String
+  changedAt   DateTime @default(now())
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report    OperationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  changedBy User            @relation(fields: [changedByUserId], references: [id])
+
+  @@unique([reportId, version])
+
+  @@map("report_revision")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, readAt])
+
+  @@map("notification")
+}
