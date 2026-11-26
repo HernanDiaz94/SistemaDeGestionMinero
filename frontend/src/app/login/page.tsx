@@ -222,11 +222,11 @@ export default function LoginPage() {
                 <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/60 p-4">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-amber-800">Credenciales de demostración</p>
                   <div className="space-y-2 text-xs text-slate-600">
-                    <button type="button" onClick={() => useDemo('superadmin@miningmanager.com')} className="block w-full rounded px-2 py-1 text-left hover:bg-amber-100">
-                      <span className="font-semibold text-slate-800">Superadministrador:</span> superadmin@miningmanager.com / Demo1234!
+                    <button type="button" onClick={() => useDemo('superadmin@miningmanager.com.ar')} className="block w-full rounded px-2 py-1 text-left hover:bg-amber-100">
+                      <span className="font-semibold text-slate-800">Superadministrador:</span> superadmin@miningmanager.com.ar / Demo1234!
                     </button>
-                    <button type="button" onClick={() => useDemo('admin@mineraaurora.cl')} className="block w-full rounded px-2 py-1 text-left hover:bg-amber-100">
-                      <span className="font-semibold text-slate-800">Administrador:</span> admin@mineraaurora.cl / Demo1234!
+                    <button type="button" onClick={() => useDemo('admin@mineraaurora.com.ar')} className="block w-full rounded px-2 py-1 text-left hover:bg-amber-100">
+                      <span className="font-semibold text-slate-800">Administrador:</span> admin@mineraaurora.com.ar / Demo1234!
                     </button>
                   </div>
                 </div>

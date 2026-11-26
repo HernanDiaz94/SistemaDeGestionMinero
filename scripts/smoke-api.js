@@ -24,7 +24,7 @@ function check(name, result, expected = 200) {
 
 (async () => {
   const login = await call('POST', '/auth/login', null, {
-    email: 'admin@mineraaurora.cl', password: 'Demo1234!', tenantSlug: 'minera-aurora',
+    email: 'admin@mineraaurora.com.ar', password: 'Demo1234!', tenantSlug: 'minera-aurora',
   });
   if (!check('login admin', login, 201)) process.exit(1);
   const token = login.data.accessToken;
@@ -78,7 +78,7 @@ function check(name, result, expected = 200) {
   }
 
   const other = await call('POST', '/auth/login', null, {
-    email: 'admin@andescopper.cl', password: 'Demo1234!', tenantSlug: 'andes-copper',
+    email: 'admin@andescopper.com.ar', password: 'Demo1234!', tenantSlug: 'andes-copper',
   });
   if (check('login otro tenant', other, 201)) {
     const cross = await call('GET', `/reports/${reportId || 'x'}`, other.data.accessToken);
@@ -90,7 +90,7 @@ function check(name, result, expected = 200) {
   }
 
   const superLogin = await call('POST', '/auth/login', null, {
-    email: 'superadmin@miningmanager.com', password: 'Demo1234!', tenantSlug: 'minera-aurora',
+    email: 'superadmin@miningmanager.com.ar', password: 'Demo1234!', tenantSlug: 'minera-aurora',
   });
   allOk = check('login superadmin en tenant', superLogin, 201) && allOk;
   if (superLogin.status === 201) {

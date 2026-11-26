@@ -39,11 +39,11 @@ Solo para entorno de demostración. Cambiar contraseñas en producción.
 
 | Usuario | Contraseña | Rol |
 | --- | --- | --- |
-| `superadmin@miningmanager.com` | `Demo1234!` | Superadministrador (panel global) |
-| `admin@mineraaurora.cl` | `Demo1234!` | Administrador empresarial |
-| `supervisor@mineraaurora.cl` | `Demo1234!` | Supervisor |
-| `operador@mineraaurora.cl` | `Demo1234!` | Operador |
-| `admin@andescopper.cl` | `Demo1234!` | Administrador empresarial |
+| `superadmin@miningmanager.com.ar` | `Demo1234!` | Superadministrador (panel global) |
+| `admin@mineraaurora.com.ar` | `Demo1234!` | Administrador empresarial |
+| `supervisor@mineraaurora.com.ar` | `Demo1234!` | Supervisor |
+| `operador@mineraaurora.com.ar` | `Demo1234!` | Operador |
+| `admin@andescopper.com.ar` | `Demo1234!` | Administrador empresarial |
 
 ## Documentación
 

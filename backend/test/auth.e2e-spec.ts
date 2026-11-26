@@ -10,7 +10,7 @@ describe('Flujo de autenticación (e2e)', () => {
   it('rechaza credenciales inválidas', async () => {
     const response = await request(API)
       .post('/auth/login')
-      .send({ email: 'no-existe@test.cl', password: 'mala-contrasena' });
+      .send({ email: 'no-existe@test.com.ar', password: 'mala-contrasena' });
     expect(response.status).toBe(401);
   });
 
@@ -18,7 +18,7 @@ describe('Flujo de autenticación (e2e)', () => {
     const login = await request(API)
       .post('/auth/login')
       .send({
-        email: 'admin@mineraaurora.cl',
+        email: 'admin@mineraaurora.com.ar',
         password: 'Demo1234!',
         tenantSlug: 'minera-aurora',
       });

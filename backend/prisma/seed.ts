@@ -73,9 +73,9 @@ async function main() {
 
   // ------------------------------------------------------------ superusuario
   const superadmin = await prisma.user.upsert({
-    where: { email: 'superadmin@miningmanager.com' },
+    where: { email: 'superadmin@miningmanager.com.ar' },
     create: {
-      email: 'superadmin@miningmanager.com',
+      email: 'superadmin@miningmanager.com.ar',
       passwordHash: await bcrypt.hash(PASSWORD, 10),
       firstName: 'Super',
       lastName: 'Administrador',
@@ -89,8 +89,8 @@ async function main() {
     slug: 'minera-aurora',
     legalName: 'Minera Aurora SpA',
     taxId: '76.123.456-7',
-    adminEmail: 'admin@mineraaurora.cl',
-    supervisorEmail: 'supervisor@mineraaurora.cl',
+    adminEmail: 'admin@mineraaurora.com.ar',
+    supervisorEmail: 'supervisor@mineraaurora.com.ar',
     projects: [
       { code: 'PA-01', name: 'Proyecto Cobre Norte', mines: [
         { code: 'M-A', name: 'Yacimiento Cobre Norte', mode: MineMode.OPEN_PIT },
@@ -110,8 +110,8 @@ async function main() {
     slug: 'andes-copper',
     legalName: 'Andes Copper S.A.',
     taxId: '77.987.654-3',
-    adminEmail: 'admin@andescopper.cl',
-    supervisorEmail: 'supervisor@andescopper.cl',
+    adminEmail: 'admin@andescopper.com.ar',
+    supervisorEmail: 'supervisor@andescopper.com.ar',
     projects: [
       { code: 'AC-01', name: 'Proyecto Cerro Verde', mines: [
         { code: 'CV-1', name: 'Mina Cerro Verde', mode: MineMode.OPEN_PIT },
@@ -125,7 +125,7 @@ async function main() {
 
   console.log('Seed completado.');
   console.log(`Superadmin: ${superadmin.email} / ${PASSWORD}`);
-  console.log(`Admin Aurora: admin@mineraaurora.cl / ${PASSWORD}`);
+  console.log(`Admin Aurora: admin@mineraaurora.com.ar / ${PASSWORD}`);
 }
 
 type SeedTenantParams = {
@@ -354,7 +354,7 @@ async function seedTenant(params: SeedTenantParams) {
           lastName: lastNames[i % lastNames.length],
           documentType: 'DNI',
           documentNumber: `${15000000 + i * 137}`,
-          email: `${code.toLowerCase()}@example.cl`,
+          email: `${code.toLowerCase()}@example.com.ar`,
           position: positions[i % positions.length],
           company: i % 4 === 0 ? 'Contratista Andes Limitada' : params.name,
           type: i % 4 === 0 ? EmploymentType.CONTRACTOR : EmploymentType.EMPLOYEE,

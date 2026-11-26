@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 describe('AuthService', () => {
   const user = {
     id: 'user-1',
-    email: 'sup@test.cl',
+    email: 'sup@test.com.ar',
     passwordHash: bcrypt.hashSync('Demo1234!', 10),
     firstName: 'Ana',
     lastName: 'Diaz',
@@ -49,7 +49,7 @@ describe('AuthService', () => {
 
   it('genera tokens con los permisos del tenant activo', async () => {
     const result = await service.login({
-      email: 'sup@test.cl',
+      email: 'sup@test.com.ar',
       password: 'Demo1234!',
     });
     expect(result.accessToken).toBe('token');
@@ -61,13 +61,13 @@ describe('AuthService', () => {
 
   it('rechaza contraseña incorrecta', async () => {
     await expect(
-      service.login({ email: 'sup@test.cl', password: 'incorrecta' }),
+      service.login({ email: 'sup@test.com.ar', password: 'incorrecta' }),
     ).rejects.toThrow(UnauthorizedException);
   });
 
   it('rechaza tenants a los que el usuario no pertenece', async () => {
     await expect(
-      service.login({ email: 'sup@test.cl', password: 'Demo1234!', tenantSlug: 'otra-empresa' }),
+      service.login({ email: 'sup@test.com.ar', password: 'Demo1234!', tenantSlug: 'otra-empresa' }),
     ).rejects.toThrow(UnauthorizedException);
   });
 });

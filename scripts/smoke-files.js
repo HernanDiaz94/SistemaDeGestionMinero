@@ -4,7 +4,7 @@ const API = process.env.TEST_API_URL || 'http://localhost:3001/api';
   const login = await fetch(API + '/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@mineraaurora.cl', password: 'Demo1234!', tenantSlug: 'minera-aurora' }),
+    body: JSON.stringify({ email: 'admin@mineraaurora.com.ar', password: 'Demo1234!', tenantSlug: 'minera-aurora' }),
   }).then((r) => r.json());
   const token = login.accessToken;
   const auth = { Authorization: `Bearer ${token}` };
